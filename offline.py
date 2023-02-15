@@ -5,11 +5,60 @@ import glob
 
 
 squaresize = 25
+img = None
+objp = None
 
-def manualCornerDetection(img, size):
-    return ret, corners
+clicks = list()
+def click_event(event, x, y, flags, params):
+    global img
+    if event == cv.EVENT_LBUTTONDOWN:
+        print('X: ', x, ', Y: ', y)
+        drawCircle(x, y, True)
+        clicks.append([x,y])
+
+# draw a circle on x, y
+def drawCircle(x, y, show=False):
+    global img
+    cv.line(img, (x, y-4), (x, y+4), (0,0,255), 1)
+    cv.line(img, (x-4, y), (x+4, y), (0,0,255), 1)
+    cv.circle(img, (x, y), 8, (0,0,255), 1)
+    if show:
+        cv.imshow('img', img)
+
+def manualCornerDetection(size):
+    global img
+    clicks.clear()
+    cv.imshow('img', img)
+    cv.setMouseCallback('img', click_event, img)
+    
+    # we need 4 corners, so wait...
+    while len(clicks) < 4:
+        cv.waitKey(25)
+
+    # 4 outer corners of checkerboard
+    checkCorners = [[0, 0], [200, 0], [0, 125], [200, 125]]
+
+    # do math magic
+    persMx = cv.getPerspectiveTransform(np.float32(checkCorners), np.float32(clicks))
+
+    # get (2d!!) checkerboard array in correct shape
+    chkPts = []
+    for x, y, z in objp:
+        chkPts.append([x,y])
+    chkPts = np.array(chkPts)
+    chkPts = chkPts.reshape(54, 1, 2)
+
+    # apply math magic
+    persCheck = cv.perspectiveTransform(chkPts, persMx)
+
+    # reset mouse callback
+    cv.setMouseCallback('img', lambda *args : None)
+    return True, persCheck
 
 def calibrateCamera(size, imagenames):
+    global img
+    global objp
+
     # termination criteria
     criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
@@ -30,6 +79,7 @@ def calibrateCamera(size, imagenames):
 
         # Find the chess board corners
         ret, corners = cv.findChessboardCorners(gray, size, None)
+        print(corners)
     
         # If found, add object points, image points (after refining them)
         if ret == True:
@@ -39,11 +89,18 @@ def calibrateCamera(size, imagenames):
             # Draw and display the corners
             cv.drawChessboardCorners(img, size, corners2, ret)
             cv.imshow('img', img)
-            cv.waitKey(0)
+            cv.waitKey(500)
+
+        else:
+            ret, corners = manualCornerDetection(size)
+            objpoints.append(objp)
+            imgpoints.append(corners)
+            # Draw and display the corners
+            cv.drawChessboardCorners(img, size, corners, ret)
+            cv.imshow('img', img)
+            cv.waitKey(500)
             
     cv.destroyAllWindows()
-
-
 
 images = glob.glob('*.jpg')
 calibrateCamera((9,6), images)
