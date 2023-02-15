@@ -83,11 +83,12 @@ def cameraCalibration(size, imagefnames, outfname):
         ret, corners = cv.findChessboardCorners(gray, size, None)
     
         if not ret:
-            corners = manualCornerDetection(size)
+            corners2 = manualCornerDetection(size)
             ret = True
+        else:
+            corners2 = cv.cornerSubPix(gray,corners, (11,11), (-1,-1), criteria)
         
         objpoints.append(objp)
-        corners2 = cv.cornerSubPix(gray,corners, (11,11), (-1,-1), criteria)
         imgpoints.append(corners2)
         # Draw and display the corners
         cv.drawChessboardCorners(img, size, corners2, ret)
@@ -105,5 +106,5 @@ def cameraCalibration(size, imagefnames, outfname):
     s.release()
 
 
-images = glob.glob('*.jpg')
-cameraCalibration((9,6), images, "intrinsicmatrix")
+images = glob.glob('Run1/*.jpg')
+cameraCalibration((9,6), images, "intrinsicmatrixRun1")
