@@ -16,7 +16,6 @@ def click_event(event, x, y, flags, params):
     """
     global img
     if event == cv.EVENT_LBUTTONDOWN:
-        print('X: ', x, ', Y: ', y)
         drawCircle(x, y, True)
         clicks.append([x,y])
 
