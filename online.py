@@ -32,8 +32,7 @@ def drawAxisAndCube(img, corners, axisImgpts, cubeImgpts):
     return img
 
 
-def onlinePhaseImages(size, imagefnames, cameraMatrixfname):
-    mtx = loadCameraMatrixFromFile(cameraMatrixfname)
+def addCubeAndAxis2Frame(size, img, mtx, flag = None):
     criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
     objp = np.zeros((size[0]*size[1],3), np.float32)
     objp[:,:2] = np.mgrid[0:size[0],0:size[1]].T.reshape(-1,2)
@@ -46,13 +45,10 @@ def onlinePhaseImages(size, imagefnames, cameraMatrixfname):
     cube = np.float32([[0,0,0], [0,cubesize,0], [cubesize,cubesize,0], [cubesize,0,0],
                        [0,0,-cubesize],[0,cubesize,-cubesize],[cubesize,cubesize,-cubesize],
                        [cubesize,0,-cubesize] ])
+    gray = cv.cvtColor(img,cv.COLOR_BGR2GRAY)
+    ret, corners = cv.findChessboardCorners(gray, size,None,flag)
 
-    for fname in imagefnames:
-        img = cv.imread(fname)
-        gray = cv.cvtColor(img,cv.COLOR_BGR2GRAY)
-        ret, corners = cv.findChessboardCorners(gray, size,None)
-
-        if ret == True:
+    if ret == True:
             corners2 = cv.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
             # Find the rotation and translation vectors.
             ret,rvecs, tvecs = cv.solvePnP(objp, corners2, mtx, None)
@@ -60,58 +56,43 @@ def onlinePhaseImages(size, imagefnames, cameraMatrixfname):
             axisImgpts, jac = cv.projectPoints(axis, rvecs, tvecs, mtx, None)
             cubeImgpts, jac = cv.projectPoints(cube, rvecs, tvecs, mtx, None)
             img = drawAxisAndCube(img,corners2,axisImgpts,cubeImgpts)
-            cv.imshow('img',img)
-            k = cv.waitKey(0) & 0xFF
 
-            # use the key s to save the image with the axis and cube
-            if k == ord('s'):
-                # writes the picture with axis and cube to a .png in the current directory:
-                cv.imwrite(os.path.basename(fname).split('.')[0]+'_save.png', img)
+    return img
+
+def onlinePhaseImages(size, imagefnames, cameraMatrixfname):
+    mtx = loadCameraMatrixFromFile(cameraMatrixfname)
+
+    for fname in imagefnames:
+        img = cv.imread(fname)
+        img = addCubeAndAxis2Frame(size, img, mtx)
+        cv.imshow('img',img)
+        k = cv.waitKey(0) & 0xFF
+
+        # use the key s to save the image with the axis and cube
+        if k == ord('s'):
+            # writes the picture with axis and cube to a .png in the current directory:
+            cv.imwrite(os.path.basename(fname).split('.')[0]+'_save.png', img)
     cv.destroyAllWindows()
 
 
 def onlinePhaseVideo(size, cameraMatrixfname):
     mtx = loadCameraMatrixFromFile(cameraMatrixfname)
-    criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-    objp = np.zeros((size[0]*size[1],3), np.float32)
-    objp[:,:2] = np.mgrid[0:size[0],0:size[1]].T.reshape(-1,2)
-    objp = objp * squaresize
-    cubesize = 2*squaresize
-
-    # 3D points of the axis line-ends:
-    axis = np.float32([[3*squaresize,0,0], [0,3*squaresize,0], [0,0,-3*squaresize]]).reshape(-1,3)
-    # 3D points of the cube corners:
-    cube = np.float32([[0,0,0], [0,cubesize,0], [cubesize,cubesize,0], [cubesize,0,0],
-                       [0,0,-cubesize],[0,cubesize,-cubesize],[cubesize,cubesize,-cubesize],
-                       [cubesize,0,-cubesize] ])
-
+    
     cap = cv.VideoCapture(0)
     if not cap.isOpened():
         print("Cannot open camera")
         exit()
     while True:
-        # Capture frame-by-frame
-        red, img = cap.read()
-        # if frame is read correctly ret is True
-        if not red:
+        ret, img = cap.read()
+        if not ret:
             print("Can't receive frame (stream end?). Exiting ...")
             break
-        # Our operations on the frame come here
-
-        
-        gray = cv.cvtColor(img,cv.COLOR_BGR2GRAY)
-        ret, corners = cv.findChessboardCorners(gray, size,None,cv.CALIB_CB_FAST_CHECK)
-
-        if ret == True:
-            corners2 = cv.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
-            # Find the rotation and translation vectors.
-            ret,rvecs, tvecs = cv.solvePnP(objp, corners2, mtx, None)
-            # project 3D points to image plane
-            axisImgpts, jac = cv.projectPoints(axis, rvecs, tvecs, mtx, None)
-            cubeImgpts, jac = cv.projectPoints(cube, rvecs, tvecs, mtx, None)
-            img = drawAxisAndCube(img,corners2,axisImgpts,cubeImgpts)
+        img = addCubeAndAxis2Frame(size, img, mtx, cv.CALIB_CB_FAST_CHECK)
         cv.imshow('img',img)
-        cv.waitKey(1)
+        k = cv.waitKey(1)
+        # use the key q to quit the program:
+        if k == ord('q'):
+            break
         
     
 
