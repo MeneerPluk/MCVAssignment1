@@ -1,6 +1,5 @@
 import cv2 as cv
 import numpy as np
-import sys
 import glob
 
 
@@ -10,14 +9,23 @@ objp = None
 
 clicks = list()
 def click_event(event, x, y, flags, params):
+    """
+    This function is a mouse event handler.
+    The mouslocation gets saved when the user clicks on the image.
+    It also draws a circle on the clicked coordinates.
+    """
     global img
     if event == cv.EVENT_LBUTTONDOWN:
         print('X: ', x, ', Y: ', y)
         drawCircle(x, y, True)
         clicks.append([x,y])
 
-# draw a circle on x, y
+
 def drawCircle(x, y, show=False):
+    """
+    This function draws a circle with a cross in the middle on the x and y location that are given.
+    There is an option to show the image in the display window.
+    """
     global img
     cv.line(img, (x, y-4), (x, y+4), (0,0,255), 1)
     cv.line(img, (x-4, y), (x+4, y), (0,0,255), 1)
@@ -25,7 +33,14 @@ def drawCircle(x, y, show=False):
     if show:
         cv.imshow('img', img)
 
+
 def manualCornerDetection(size):
+    """
+    This function is used to manually select the chessboard corners by clicking on the outer corners.
+    You need to select the outer corners from left to right, top to bottom.
+    The grid is then interpolated by first getting the perspective transform of the outer corner points and
+    then perspective transforming the 3d grid points using the obtained perspective transformation matrix.
+    """
     global img
     clicks.clear()
     cv.imshow('img', img)
@@ -36,7 +51,7 @@ def manualCornerDetection(size):
         cv.waitKey(25)
 
     # 4 outer corners of checkerboard
-    checkCorners = [[0, 0], [200, 0], [0, 125], [200, 125]]
+    checkCorners = [[0, 0], [(size[0]-1)*squaresize, 0], [0, (size[1]-1)*squaresize], [(size[0]-1)*squaresize, (size[1]-1)*squaresize]]
 
     # do math magic
     persMx = cv.getPerspectiveTransform(np.float32(checkCorners), np.float32(clicks))
@@ -55,8 +70,15 @@ def manualCornerDetection(size):
     cv.setMouseCallback('img', lambda *args : None)
     return persCheck
 
-# calibrates and saves the camera matrix to a specified file:
+
 def cameraCalibration(size, imagefnames, outfname):
+    """
+    This function is the main calibration script.
+    It takes a size (nr_rowcorners, nr_collumncorners), list of image file paths to use for the calibration 
+    and a file name to output the intrinsic camera matrix into.
+    The automated corner selection of opencv is used first and if it fails our own manual selection interface takes over.
+    The calibrated camera intrinsic matrix then gets saved to a file for later use.
+    """
     global img
     global objp
 
@@ -100,11 +122,12 @@ def cameraCalibration(size, imagefnames, outfname):
     #------------------------------------------Calibration part------------------------------------------
     ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 
-    # writing the camera intrinsic matrix to an XML file for later use:
+    # writing the camera intrinsic matrix to a file for later use:
     s = cv.FileStorage(outfname, cv.FileStorage_WRITE)
     s.write('K', mtx)
     s.release()
 
 
-images = glob.glob('Run1/*.jpg')
-cameraCalibration((9,6), images, "intrinsicmatrixRun1")
+if __name__ == "__main__":
+    images = glob.glob('Run1/*.jpg')
+    cameraCalibration((9,6), images, "intrinsicmatrixRun1")
