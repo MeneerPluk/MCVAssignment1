@@ -53,7 +53,7 @@ def manualCornerDetection(size):
 
     # reset mouse callback
     cv.setMouseCallback('img', lambda *args : None)
-    return True, persCheck
+    return persCheck
 
 # calibrates and saves the camera matrix to a specified file:
 def cameraCalibration(size, imagefnames, outfname):
@@ -93,7 +93,7 @@ def cameraCalibration(size, imagefnames, outfname):
         # Draw and display the corners
         cv.drawChessboardCorners(img, size, corners2, ret)
         cv.imshow('img', img)
-        cv.waitKey(0)
+        cv.waitKey(250)
 
     cv.destroyAllWindows()
 
