@@ -81,7 +81,6 @@ def cameraCalibration(size, imagefnames, outfname):
 
         # Find the chess board corners
         ret, corners = cv.findChessboardCorners(gray, size, None)
-        print(corners)
     
         if not ret:
             corners = manualCornerDetection(size)
