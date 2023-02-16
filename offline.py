@@ -56,11 +56,8 @@ def manualCornerDetection(size):
     persMx = cv.getPerspectiveTransform(np.float32(checkCorners), np.float32(clicks))
 
     # get (2d!!) checkerboard array in correct shape
-    chkPts = []
-    for x, y, z in objp:
-        chkPts.append([x,y])
-    chkPts = np.array(chkPts)
-    chkPts = chkPts.reshape(54, 1, 2)
+    chkPts = objp[:,0:2]
+    chkPts = chkPts.reshape(size[0]*size[1], 1, 2)
 
     # apply math magic
     persCheck = cv.perspectiveTransform(chkPts, persMx)
@@ -68,6 +65,7 @@ def manualCornerDetection(size):
     # reset mouse callback
     cv.setMouseCallback('img', lambda *args : None)
     return persCheck
+
 
 
 def cameraCalibration(size, imagefnames, outfname):
@@ -85,7 +83,7 @@ def cameraCalibration(size, imagefnames, outfname):
     # termination criteria
     criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-    # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
+    # prepare object points, a grid of the dimensions that are given by size
     objp = np.zeros((size[0]*size[1],3), np.float32)
     objp[:,:2] = np.mgrid[0:size[0],0:size[1]].T.reshape(-1,2)
 
@@ -125,6 +123,8 @@ def cameraCalibration(size, imagefnames, outfname):
     s = cv.FileStorage(outfname, cv.FileStorage_WRITE)
     s.write('K', mtx)
     s.release()
+
+
 
 
 if __name__ == "__main__":
