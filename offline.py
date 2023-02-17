@@ -1,7 +1,7 @@
 import cv2 as cv
 import numpy as np
 import glob
-
+import random
 
 squaresize = 25
 img = None
@@ -66,15 +66,51 @@ def manualCornerDetection(size):
     cv.setMouseCallback('img', lambda *args : None)
     return persCheck
 
+def calibrationConfidence(size, imagefnames, nrOfSubsets, subsetSize):
+    """
+    This function gives a confidence level of each camera intrinsic parameter in the form of zscore
+    there are (nrOfSubsets) subsets of size (subsetSize) taken from the list of images 
+    and from these samples is made a normal distribution in terms of mean and STDEV.
+    Using these values for each parameter the zscore is calculated for the calibration on the whole set of images.
+    The closer the value is to 0 the better the estimation of the parameter, 
+    the sign shows in what direction the value is of from the mean.
+
+    return is the zscore confidence matrix of the intrinsic camera matrix of the whole set of images.
+    """
+    calibration_all_imgs = cameraCalibration(size, imagefnames, None, False)
+    calibration_list = []
+
+    if subsetSize > len(imagefnames):
+        subsetSize = len(imagefnames)
+
+    for i in range(nrOfSubsets):
+        subSetImgs = random.sample(imagefnames,subsetSize)
+        calibration_list.append(cameraCalibration(size,subSetImgs,None, False))
+    
+    calibration_list = np.array(calibration_list)
+    parameterMeans = np.mean(calibration_list,0)
+    parametersSTDEVs = np.std(calibration_list, 0)
+
+    parametersZscores = (calibration_all_imgs - parameterMeans) / parametersSTDEVs
+
+    print("The confidence in Z-score of the intrinsic camera parameters are:")
+    print(f"f_x: {parametersZscores[0,0]}")
+    print(f"f_y: {parametersZscores[1,1]}")
+    print(f"c_x: {parametersZscores[0,2]}")
+    print(f"c_x: {parametersZscores[1,2]}")
+
+    return parametersZscores
 
 
-def cameraCalibration(size, imagefnames, outfname):
+def cameraCalibration(size, imagefnames, outfname, save = True):
     """
     This function is the main calibration script.
     It takes a size (nr_rowcorners, nr_collumncorners), list of image file paths to use for the calibration 
     and a file name to output the intrinsic camera matrix into.
     The automated corner selection of opencv is used first and if it fails our own manual selection interface takes over.
-    The calibrated camera intrinsic matrix then gets saved to a file for later use.
+    The calibrated camera intrinsic matrix then gets saved to a file for later use if the save option is picked.
+
+    returns the intrinsic camera matrix.
     """
     global img
     global objp
@@ -120,13 +156,16 @@ def cameraCalibration(size, imagefnames, outfname):
     ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 
     # writing the camera intrinsic matrix to a file for later use:
-    s = cv.FileStorage(outfname, cv.FileStorage_WRITE)
-    s.write('K', mtx)
-    s.release()
+    if save:
+        s = cv.FileStorage(outfname, cv.FileStorage_WRITE)
+        s.write('K', mtx)
+        s.release()
+
+    return mtx
 
 
 
 
 if __name__ == "__main__":
     images = glob.glob('Run1/*.jpg')
-    cameraCalibration((9,6), images, "intrinsicmatrixRun1")
+    calibrationConfidence((9,6),images, 10, 4)
