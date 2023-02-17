@@ -66,10 +66,11 @@ def manualCornerDetection(size):
     cv.setMouseCallback('img', lambda *args : None)
     return persCheck
 
-def calibrationConfidence(size, imagefnames, nrOfSubsets, subsetSize):
+def calibrationConfidence(size, mtx, imagefnames, nrOfSubsets, subsetSize):
     """
-    This function gives a confidence level of each camera intrinsic parameter in the form of zscore
-    there are (nrOfSubsets) subsets of size (subsetSize) taken from the list of images 
+    This function gives a confidence level of each camera intrinsic parameter in the form of zscore.
+    either give it a intrinsic matrix or let it make one itself using the images provided, by setting it to None.
+    There are (nrOfSubsets) subsets of size (subsetSize) taken from the list of images 
     and from these samples is made a normal distribution in terms of mean and STDEV.
     Using these values for each parameter the zscore is calculated for the calibration on the whole set of images.
     The closer the value is to 0 the better the estimation of the parameter, 
@@ -77,7 +78,10 @@ def calibrationConfidence(size, imagefnames, nrOfSubsets, subsetSize):
 
     return is the zscore confidence matrix of the intrinsic camera matrix of the whole set of images.
     """
-    calibration_all_imgs = cameraCalibration(size, imagefnames, None, False)
+    if mtx == None:
+        calibration_all_imgs = cameraCalibration(size, imagefnames, None, False)
+    else:
+        calibration_all_imgs = mtx
     calibration_list = []
 
     if subsetSize > len(imagefnames):
@@ -168,4 +172,4 @@ def cameraCalibration(size, imagefnames, outfname, save = True):
 
 if __name__ == "__main__":
     images = glob.glob('Run1/*.jpg')
-    calibrationConfidence((9,6),images, 10, 4)
+    calibrationConfidence((9,6),None, images, 10, 4)
